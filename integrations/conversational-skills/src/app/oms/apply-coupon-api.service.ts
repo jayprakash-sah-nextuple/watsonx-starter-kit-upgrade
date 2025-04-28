@@ -16,7 +16,7 @@ export class ApplyCouponApiService {
     private templatesSvc: GetPageTemplatesService,
   ) {}
 
-  public async applyCoupon(input: { OrderHeaderKey: string; PromotionId: string; Note?: any }): Promise<boolean> {
+  public async applyCoupon(input: { OrderHeaderKey: string; PromotionId: string; Note?: any }): Promise<any> {
     const response = await this.omsClient.getPageAsync(
       {
         Name: 'changeOrder',
@@ -31,9 +31,20 @@ export class ApplyCouponApiService {
       },
       this.jwtHelperService.jwt,
     );
-    return getArray(get(response, 'Output.Order.Promotions.Promotion')).find(
+
+    const promotionApplied = getArray(get(response, 'Output.Order.Promotions.Promotion')).find(
       (p) => p.PromotionId === input.PromotionId && p.PromotionApplied === 'Y',
     );
+
+    const orderTotal = get(response, 'Output.Order.PriceInfo.Total');
+    const discountAmount = get(response, 'Output.Order.PriceInfo.DiscountAmount');
+
+    return {
+      success: promotionApplied !== undefined,
+      message: promotionApplied !== undefined ? 'Coupon applied successfully' : 'Coupon application failed',
+      orderTotal,
+      discountAmount,
+    };
   }
 
   public async validateCoupon(PromotionId: string, currentOrder: any) {

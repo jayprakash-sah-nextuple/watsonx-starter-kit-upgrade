@@ -10,7 +10,7 @@ import { HoldsApiService } from './holds-api.service';
 import { SearchOrdersApiService } from './search-orders-api.service';
 import { CustomerAppeasementApiService } from './customer-appeasement-api.service';
 import { CoreModule } from '../core/core.module';
-
+import { AppeaseCustomerService } from './appease-customer-api.service';
 const providers = [
   OmsApiClient,
   GetPageTemplatesService,
@@ -21,6 +21,7 @@ const providers = [
   HoldsApiService,
   SearchOrdersApiService,
   CustomerAppeasementApiService,
+  AppeaseCustomerService,
 ];
 
 @Module({

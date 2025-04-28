@@ -1,12 +1,13 @@
-import { Logger } from '@nestjs/common';
-import { Slot, SlotType } from '../../conv-sdk';
+import { Inject, Logger } from '@nestjs/common';
+import { Entity, EntityValue, Slot, SlotType, SlotValue } from '../../conv-sdk';
 import { Constants } from '../common/constants';
-import { getModificationType, isModificationAllowed, isVoid } from '../common/functions';
+import { getArray, getModificationType, isModificationAllowed, isVoid } from '../common/functions';
 import { OnSlotChange, Skill } from '../../decorators';
 import { ENTERPRISE_CODE_SLOT, LookupOrderSkillService, ORDER_NO_SLOT } from './lookup-order-skill.service';
 import { CancelOrderApiService } from '../oms';
 
 const CANCEL_CONFIRMATION_SLOT = 'ConfirmCancelAction';
+const CANCELLATION_REASON_SLOT = 'CancellationReason';
 /**
  * This skill cancels an order.
  * The skill does not consider the order in context until it is told do so using `useCurrentOrderInContext` session variable.
@@ -19,12 +20,17 @@ const CANCEL_CONFIRMATION_SLOT = 'ConfirmCancelAction';
  */
 @Skill({
   skillId: Constants.CANCEL_ORDER_SKILL_ID,
-  slots: [{ name: CANCEL_CONFIRMATION_SLOT, type: SlotType.CONFIRMATION }],
+  slots: [
+    { name: CANCELLATION_REASON_SLOT, type: SlotType.ENTITY },
+    { name: CANCEL_CONFIRMATION_SLOT, type: SlotType.CONFIRMATION },
+  ],
 })
 export class CancelOrderSkillService extends LookupOrderSkillService {
   private readonly MODIFICATION_TYPE_CANCEL = 'CANCEL';
-
   protected readonly logger: Logger = new Logger('CancelOrderSkillService');
+
+  @Inject()
+  protected cancelApiService: CancelOrderApiService;
 
   private readonly additionalApiInput = {
     Modifications: {
@@ -32,7 +38,7 @@ export class CancelOrderSkillService extends LookupOrderSkillService {
     },
   };
 
-  constructor(private cancelApiService: CancelOrderApiService) {
+  constructor() {
     super();
     this.additionalSkillInput = {
       additionalApiInput: this.additionalApiInput,
@@ -40,17 +46,59 @@ export class CancelOrderSkillService extends LookupOrderSkillService {
     };
   }
 
+  protected async initializeSlotsInFlight(): Promise<void> {
+    await super.initializeSlotsInFlight();
+
+    const useCurrentOrderInContext = this.canUseCurrentOrderFromContext();
+    if (!useCurrentOrderInContext) {
+      this.deleteCurrentOrderFromContext();
+    }
+    this.getSkillResponseSlot(CANCELLATION_REASON_SLOT).schema = new Entity(CANCELLATION_REASON_SLOT, []);
+  }
+  
+  @OnSlotChange(ENTERPRISE_CODE_SLOT)
+  private async onEnterpriseCodeChangeValue(slot: Slot) {
+    const value = slot.value.normalized;
+    const reasonOptions = (await this.getCancelReasonList(value))?.map(
+      (opt) =>
+        new EntityValue({
+          label: opt.label,
+          value: opt.value,
+          synonyms: [opt.label, opt.value],
+          patterns: undefined,
+        }),
+    );
+    
+    this.getSkillResponseSlot(CANCELLATION_REASON_SLOT).schema = new Entity(CANCELLATION_REASON_SLOT, reasonOptions);
+  }
+
+  @OnSlotChange(CANCELLATION_REASON_SLOT)
+  private async onCancellationReasonChange(slot: Slot, slotInFlight: Slot) {
+    const rawValue = slot.value.normalized;
+    const selected = (await this.getCancelReasonList()).find(
+      (r) => r.label.toLowerCase() === rawValue.toLowerCase() || r.value === rawValue,
+    );
+    if (selected) {
+      slotInFlight.value = new SlotValue(selected.label, selected.value);
+    } else {
+      this.logger.log(`Invalid cancellation reason: ${rawValue}`);
+      slotInFlight.value = undefined;
+      slotInFlight.setError = this.getErrorForSlot(CANCELLATION_REASON_SLOT, 'invalid', { value: rawValue });
+    }
+  }
+
   @OnSlotChange(CANCEL_CONFIRMATION_SLOT)
   private async onCancelConfirmationChange(slot: Slot) {
     let skillCompleteMetadata: any = {};
     const order = this.getCurrentOrderFromContext();
+    const reason = (await this.getCancelReasonList()).find((r)=>r.value ===  this.getCurrentSlotValue(CANCELLATION_REASON_SLOT));
     try {
       if (slot.value.normalized === 'yes') {
-        await this.cancelApiService.cancelOrder(order.OrderHeaderKey);
+        await this.cancelApiService.cancelOrder(order.OrderHeaderKey, reason);
         this.addTextResponse(this.getStringLiteral('actionResponses.cancellationSuccessful', order));
         skillCompleteMetadata.orderCancelled = true;
       } else {
-        this.getSkillResponse().addTextResponse(this.getStringLiteral('actionResponses.actionCancelled', order));
+        this.addTextResponse(this.getStringLiteral('actionResponses.actionCancelled', order));
         skillCompleteMetadata = { orderCancelled: false, userCancelled: true };
       }
     } catch (err) {
@@ -66,17 +114,6 @@ export class CancelOrderSkillService extends LookupOrderSkillService {
     }
   }
 
-  protected async initializeSlotsInFlight(): Promise<void> {
-    await super.initializeSlotsInFlight();
-    const useCurrentOrderInContext = this.canUseCurrentOrderFromContext();
-    if (!useCurrentOrderInContext) {
-      this.deleteCurrentOrderFromContext();
-    }
-  }
-
-  /**
-   * This method processes the current order in context after the slots are processed to see if it's allowed to cancel the order.
-   */
   protected async postOnSlotStateChange(): Promise<void> {
     const isCurrentOrderProcessed = await this.processCurrentOrder();
     if (!isCurrentOrderProcessed) {
@@ -116,4 +153,19 @@ export class CancelOrderSkillService extends LookupOrderSkillService {
     }
     return isCancelAllowed;
   }
+
+  private async getCancelReasonList(enterpriseCode: string=''): Promise<any[]> {
+      let cancelReasonList: any[] = this.getFromSessionOrContext(Constants.SESSION_VARIABLE_CANCELLATION_REASON_LIST).value;
+      if (enterpriseCode!=='' && !cancelReasonList) {
+        const cancelReasonListFromAPI = await this.cancelApiService.getCancellationReason(enterpriseCode);
+        if (cancelReasonListFromAPI) {
+          cancelReasonList = getArray(cancelReasonListFromAPI).map((o) => ({
+            label: o.CodeShortDescription,
+            value:o.CodeValue,
+          }));
+        }
+        this.setSessionVariable(Constants.SESSION_VARIABLE_CANCELLATION_REASON_LIST, cancelReasonList);
+      }
+      return cancelReasonList;
+    }
 }

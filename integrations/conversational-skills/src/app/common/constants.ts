@@ -19,6 +19,10 @@ export class Constants {
 
   static readonly SESSION_VARIABLE_ENTERPRISE_CODE = 'EnterpriseCode';
 
+  static readonly SESSION_VARIABLE_CANCELLATION_REASON_LIST = 'CancellationReasonList';
+
+  static readonly SESSION_VARIABLE_APPEASE_OPTION_LIST = 'AppeaseOptionList';
+  
   static readonly SESSION_VARIABLE_OMS_JWT = 'OMS_JWT';
 
   static readonly SESSION_VARIABLE_USE_CURRENT_ORDER_IN_CONTEXT = 'useCurrentOrderInContext';
@@ -41,7 +45,7 @@ export class Constants {
 
   static readonly MOST_RECENT_ORDER_SKILL_ID = 'most-recent-order';
 
-  static readonly APPEASE_CUSTOMER_SKILL_ID = 'appease-customer';
+  static readonly APPEASE_CUSTOMER_SKILL_ID = 'appease-customer-skill';
 
   static readonly NOTES_SUMMARIZATION_SKILL_ID = 'summarize-order-notes';
 

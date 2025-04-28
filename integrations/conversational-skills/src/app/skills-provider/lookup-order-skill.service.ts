@@ -8,7 +8,7 @@ import { LookupOrderApiService, OmsCommonService } from '../oms';
 
 export const ORDER_NO_SLOT = 'OrderNo';
 export const ENTERPRISE_CODE_SLOT = 'EnterpriseCode';
-
+export const ORDER_TOTAL = 'OrderTotal';
 /**
  * This skill looks up an order based on the order number and the enterprise code.
  * The skill has two slots:
@@ -48,6 +48,7 @@ export class LookupOrderSkillService extends AbstractSkillProviderService {
 
   protected async postOnSlotStateChange() {
     const parameters = this.getNormalizedSlotValues([ORDER_NO_SLOT, ENTERPRISE_CODE_SLOT]);
+    console.log('postOnSlotStateChange', parameters);
     if (areAllParametersSet(parameters)) {
       try {
         const orderDetails = await this.apiService.getOrderDetails({
@@ -60,6 +61,7 @@ export class LookupOrderSkillService extends AbstractSkillProviderService {
       } catch (err) {
         this.logger.error('Failed to retrieve order', err);
         const message = this.getStringLiteral('actionResponses.notFound', parameters);
+        console.log('message', message);
         this.addTextResponse(message);
         this.markSkillComplete({ failed: true, message });
       }

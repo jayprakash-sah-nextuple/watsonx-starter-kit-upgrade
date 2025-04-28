@@ -5,8 +5,8 @@ import { get } from 'lodash';
 import { GetPageTemplatesService } from './getPage-templates.service';
 
 @Injectable({ scope: Scope.REQUEST })
-export class CancelOrderApiService {
-  private readonly logger = new Logger(CancelOrderApiService.name);
+export class AppeaseCustomerService {
+  private readonly logger = new Logger(AppeaseCustomerService.name);
 
   constructor(
     private readonly omsClient: OmsApiClient,
@@ -14,23 +14,8 @@ export class CancelOrderApiService {
     private templatesSvc: GetPageTemplatesService,
   ) {}
 
-  public async cancelOrder(OrderHeaderKey: string, reason: { label: string; value: string }) {
-    this.logger.log(`Cancelling order ${OrderHeaderKey} for reason: ${reason.label} for value: ${reason.value}`);
-    return this.omsClient.invokeApiAsync('invoke/cancelOrder', this.jwtHelperService.jwt, {
-      OrderHeaderKey: OrderHeaderKey,
-      ModificationReasonCode: reason.value,
-      ModificationReasonText: reason.label,
-      Notes: {
-        Note: {
-          NoteText: `The entire order was canceled due to reason: ${reason.label}`,
-          Createuserid: 'admin',
-          Modifyuserid: 'admin',
-        },
-      },
-    });
-  }
-
-  public async getCancellationReason(enterpriseCode: string): Promise<any> {
+  public async getAppeaseReasonList(enterpriseCode: string): Promise<any> {
+    this.logger.log(`Fetching appease reason list for enterprise code: ${enterpriseCode}`);
     const Template = this.templatesSvc.getPageTemplate('common', 'getCommonCodeList');
     return this.omsClient
       .getPageAsync(
@@ -39,7 +24,7 @@ export class CancelOrderApiService {
           Input: {
             CommonCode: {
               CallingOrganizationCode: enterpriseCode,
-              CodeType: 'YCD_CANCEL_REASON',
+              CodeType: 'YCD_APPEASEMENT_RSN',
               DisplayLocalizedFieldInLocale: 'xml:CurrentUser:/User/@Localecode',
               DocumentType: '0001',
             },

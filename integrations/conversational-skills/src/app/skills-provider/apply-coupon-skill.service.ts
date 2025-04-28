@@ -3,7 +3,12 @@ import { Constants } from '../common/constants';
 import { SkillResponse, Slot } from '../../conv-sdk';
 import { SkillCallbackInput } from '../skills-api/skill-callback-input.interface';
 import { getModificationType, isModificationAllowed } from '../common/functions';
-import { LookupOrderSkillService, ENTERPRISE_CODE_SLOT, ORDER_NO_SLOT } from './lookup-order-skill.service';
+import {
+  LookupOrderSkillService,
+  ENTERPRISE_CODE_SLOT,
+  ORDER_NO_SLOT,
+  ORDER_TOTAL,
+} from './lookup-order-skill.service';
 import { Skill } from '../../decorators';
 import { RequireConfirmation } from '../skills-api/require-confirmation.interface';
 import { ApplyCouponApiService } from '../oms';
@@ -50,10 +55,10 @@ export class ApplyCouponSkillService extends LookupOrderSkillService implements 
   public async onConfirm(input: SkillCallbackInput): Promise<SkillResponse> {
     const order = this.getCurrentOrderFromContext();
     const PromotionId = this.getCurrentSlotValue(PROMOTION_ID_SLOT);
-    let skillCompleteMetadata: any = {};
+    let metadata = {};
     try {
-      this.logger.log(`Applying coupon to order ${order.OrderNo}`);
-      const isPromotionApplied = await this.applyCouponSvc.applyCoupon({
+      this.logger.log(`Applying coupon to order ${order.OrderNo} ${PromotionId}`);
+      const response = await this.applyCouponSvc.applyCoupon({
         OrderHeaderKey: order.OrderHeaderKey,
         PromotionId,
         ...(this.getFromSessionOrContext(this.VARIABLE_APPLY_COUPON_AS_APPEASEMENT).value
@@ -67,19 +72,34 @@ export class ApplyCouponSkillService extends LookupOrderSkillService implements 
             }
           : {}),
       });
+
+      const isPromotionApplied = response.success;
+      const orderTotal = response.orderTotal;
+      const discountAmount = response.discountAmount;
+
       const literal = isPromotionApplied ? 'actionResponses.couponApplied' : 'actionResponses.couponNotApplied';
-      this.addTextResponse(this.getStringLiteral(literal, { PromotionId, OrderNo: order.OrderNo }));
-      skillCompleteMetadata = { promotionApplied: isPromotionApplied };
+
+      let message = this.getStringLiteral(literal, { PromotionId, OrderNo: order.OrderNo });
+      if (isPromotionApplied) {
+        message += ` Your new order total is $${orderTotal} with a discount of $${discountAmount}.`;
+      }
+
+      this.addTextResponse(message);
+      metadata = {
+        promotionApplied: isPromotionApplied,
+        orderTotal,
+        discountAmount,
+      };
     } catch (err) {
       this.logger.error('Failed to apply coupon', err);
       const message = this.getStringLiteral('actionResponses.failed', { PromotionId, OrderNo: order.OrderNo });
       this.addTextResponse(message);
-      skillCompleteMetadata = { promotionApplied: false, failed: true, message };
+      metadata = { promotionApplied: false, failed: true, message };
     } finally {
       this.commonService.gotoOrderDetailsTab(input.skillResponse, order);
       this.deleteCurrentOrderFromContext();
       this.deleteLocalVariable(Constants.SESSION_VARIABLE_USE_CURRENT_ORDER_IN_CONTEXT);
-      this.markSkillComplete(skillCompleteMetadata);
+      this.markSkillComplete(metadata);
     }
     return input.skillResponse;
   }
@@ -112,6 +132,7 @@ export class ApplyCouponSkillService extends LookupOrderSkillService implements 
     const currentOrder = this.getCurrentOrderFromContext();
     if (currentOrder) {
       const canApplyCoupon = await this.canApplyCoupon(currentOrder);
+
       if (canApplyCoupon) {
         const promoId = this.getCurrentSlotValue(PROMOTION_ID_SLOT);
         if (promoId) {
@@ -120,6 +141,7 @@ export class ApplyCouponSkillService extends LookupOrderSkillService implements 
         this.setLocalVariable(Constants.SESSION_VARIABLE_USE_CURRENT_ORDER_IN_CONTEXT, true);
         this.setSlotStringValue(ORDER_NO_SLOT, currentOrder.OrderNo);
         this.setSlotStringValue(ENTERPRISE_CODE_SLOT, currentOrder.EnterpriseCode);
+        this.setSlotStringValue(ORDER_TOTAL, currentOrder.PriceInfo.TotalAmount);
       } else {
         this.getSkillResponse().addTextResponse(this.getStringLiteral('actionResponses.notAllowed', currentOrder));
         this.markSkillComplete({ promotionApplied: false, modificationAllowed: canApplyCoupon });

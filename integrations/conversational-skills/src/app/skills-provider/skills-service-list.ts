@@ -12,6 +12,7 @@ import { NotesSummarizationSkillService } from './notes-summarization-skill.serv
 
 import { FindAppeasementsSkillService } from './customer-appeasement/find-appeasements-skill.service';
 import { RecommendAppeasementSkillService } from './customer-appeasement/recommend-appeasement-skill.service';
+import { AppeaseCustomerSkillService } from './appease-customer-skill.service';
 
 export const SKILLS_SERVICE_LIST = [
   LookupOrderSkillService,
@@ -27,4 +28,5 @@ export const SKILLS_SERVICE_LIST = [
   MostRecentPaymentSkillService,
   FindAppeasementsSkillService,
   RecommendAppeasementSkillService,
+  AppeaseCustomerSkillService
 ];

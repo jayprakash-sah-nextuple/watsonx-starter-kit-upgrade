@@ -96,3 +96,6 @@ skill_provider:
     - id: recommend-appeasement-skill
       name: Recommend appeasement skill
       description: This skill recommends if an appeasement can be provided to a customer
+    - id: appease-customer-skill
+      name: Appease Customer Skills
+      description: This skill appeases a customer by providing a discount or refund

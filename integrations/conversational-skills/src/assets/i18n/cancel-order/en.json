@@ -3,6 +3,11 @@
     "description": "The order number to cancel",
     "prompt": "Please enter the order number to cancel"
   },
+  "CancellationReason": {
+    "description": "The reason why the order is being cancelled.",
+    "prompt": "Please provide a reason for cancelling the order.",
+    "errorTemplate": "Cancellation reason is required to proceed."
+  },
   "ConfirmCancelAction": {
     "description": "Request confirmation from the user before cancelling the order.",
     "prompt": "The order ${OrderNo} can be cancelled. Do you want to proceed with the cancellation?",

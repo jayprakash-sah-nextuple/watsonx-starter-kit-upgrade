@@ -27,6 +27,7 @@ export class RecommendAppeasementSkillService extends FindAppeasementsSkillServi
   }
 
   private provideAppeasementRecommendation() {
+    console.log("Calling provideAppeasementRecommendation");
     let previousAppeasements = this.getLocalVariable(CustomerAppeasementConstants.LOCAL_VARIABLE_PREVIOUS_APPEASEMENTS);
     if (!isVoid(previousAppeasements)) {
       previousAppeasements = getArray(previousAppeasements);

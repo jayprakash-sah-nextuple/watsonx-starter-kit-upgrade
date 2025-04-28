@@ -1,0 +1,38 @@
+{
+    "AppeasementReason": {
+      "description": "Reason for providing the appeasement to the customer.",
+      "prompt": "Why are you providing an appeasement?",
+      "errors": {
+        "notInferred": "Sorry, I couldn't understand the reason. Please select a valid appeasement reason."
+      }
+    },
+    "AppeasementOption": {
+      "description": "Type of appeasement to apply (e.g., coupon, refund).",
+      "prompt": "Please choose how you'd like to appease the customer.",
+      "errors": {
+        "notInferred": "I didn’t catch the appeasement option. Please choose again."
+      }
+    },
+    "AppeasementDiscountPercent": {
+      "description": "The percentage discount to apply as part of the appeasement.",
+      "prompt": "How much discount would you like to apply (as a percentage)?",
+      "errors": {
+        "notInferred": "Sorry, I couldn’t understand the discount value. Please try again."
+      }
+    },
+    "PromotionId": {
+      "description": "The ID of the promotion/coupon to apply.",
+      "prompt": "Please enter the promotion ID you’d like to apply.",
+      "errors": {
+        "invalid": "The promotion ID '{{PromotionId}}' is invalid or cannot be applied to this order. Please enter a valid one."
+      }
+    },
+    "actionResponses": {
+      "couponApplied": "Promotion {{PromotionId}} has been successfully applied to order {{OrderNo}}.",
+      "couponNotApplied": "Could not apply promotion {{PromotionId}} to order {{OrderNo}}.",
+      "failed": "Sorry, something went wrong while trying to apply promotion {{PromotionId}} to order {{OrderNo}}.",
+      "notAllowed": "Appeasement could not be applied to this order.",
+      "cancelled": "Appeasement process cancelled."
+    }
+  }
+  
